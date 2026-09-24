@@ -86,7 +86,7 @@ export default function UploadVideoPage() {
         ) : (
           <>
             <label className="file-drop">
-              <input type="file" accept="video/*" capture="environment" onChange={handleFileChange} hidden />
+              <input type="file" accept="video/*" onChange={handleFileChange} hidden />
               {previewUrl ? (
                 <video src={previewUrl} className="file-drop-preview" controls muted />
               ) : (

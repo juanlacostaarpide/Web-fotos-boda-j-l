@@ -62,7 +62,7 @@ export default function UploadPhotoPage() {
         ) : (
           <>
             <label className="file-drop">
-              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange} hidden />
+              <input type="file" accept="image/*" onChange={handleFileChange} hidden />
               {preview ? (
                 <img src={preview} alt="Previsualización" className="file-drop-preview" />
               ) : (
