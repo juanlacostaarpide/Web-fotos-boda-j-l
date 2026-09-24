@@ -3,41 +3,71 @@ import { Link } from 'react-router-dom'
 import { useGuestName } from '../hooks/useGuestName'
 import { uploadMedia } from '../utils/api'
 
+let nextId = 0
+
 export default function UploadPhotoPage() {
   const { guestName } = useGuestName()
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
-  const [status, setStatus] = useState('idle') // idle | uploading | done | error
-  const [errorMessage, setErrorMessage] = useState('')
+  const [items, setItems] = useState([]) // { id, file, previewUrl, status, error }
+  const [uploading, setUploading] = useState(false)
+  const [done, setDone] = useState(false)
 
   const handleFileChange = (e) => {
-    const selected = e.target.files?.[0]
-    setStatus('idle')
-    setErrorMessage('')
-    if (!selected) {
-      setFile(null)
-      setPreview(null)
-      return
-    }
-    setFile(selected)
-    setPreview(URL.createObjectURL(selected))
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    const newItems = files.map((file) => ({
+      id: nextId++,
+      file,
+      previewUrl: URL.createObjectURL(file),
+      status: 'pending', // pending | uploading | done | error
+      error: '',
+    }))
+    setItems((prev) => [...prev, ...newItems])
+    setDone(false)
+    e.target.value = '' // permite volver a elegir (incluso los mismos archivos)
   }
 
-  const handleUpload = async () => {
-    if (!file) return
-    setStatus('uploading')
-    setErrorMessage('')
-    try {
-      await uploadMedia(file, guestName)
-      setStatus('done')
-      setFile(null)
-      setPreview(null)
-    } catch (err) {
-      console.error(err)
-      setErrorMessage(err.message || 'No se pudo subir la foto. Inténtalo de nuevo.')
-      setStatus('error')
-    }
+  const removeItem = (id) => {
+    setItems((prev) => {
+      const target = prev.find((item) => item.id === id)
+      if (target) URL.revokeObjectURL(target.previewUrl)
+      return prev.filter((item) => item.id !== id)
+    })
   }
+
+  const handleUploadAll = async () => {
+    setUploading(true)
+    setDone(false)
+
+    for (const item of items) {
+      if (item.status === 'done') continue
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'uploading', error: '' } : i)))
+      try {
+        await uploadMedia(item.file, guestName)
+        setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'done' } : i)))
+      } catch (err) {
+        console.error(err)
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id ? { ...i, status: 'error', error: err.message || 'No se pudo subir' } : i
+          )
+        )
+      }
+    }
+
+    setUploading(false)
+    setDone(true)
+  }
+
+  const startOver = () => {
+    items.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+    setItems([])
+    setDone(false)
+  }
+
+  const successCount = items.filter((item) => item.status === 'done').length
+  const errorCount = items.filter((item) => item.status === 'error').length
+  const allDone = items.length > 0 && items.every((item) => item.status === 'done')
 
   return (
     <main className="upload-screen">
@@ -45,40 +75,70 @@ export default function UploadPhotoPage() {
         <Link to="/" className="back-link">
           ← Volver
         </Link>
-        <h1 className="upload-title">Subir foto</h1>
+        <h1 className="upload-title">Subir fotos</h1>
 
-        {status === 'done' ? (
+        {done && allDone ? (
           <div className="upload-success">
-            <p>¡Gracias por compartir tu foto! 🎉</p>
+            <p>¡Gracias por compartir {successCount === 1 ? 'tu foto' : `tus ${successCount} fotos`}! 🎉</p>
             <div className="welcome-actions">
               <Link to="/galeria" className="btn btn-primary">
                 Ver galería
               </Link>
-              <button type="button" className="btn btn-secondary" onClick={() => setStatus('idle')}>
-                Subir otra
+              <button type="button" className="btn btn-secondary" onClick={startOver}>
+                Subir más
               </button>
             </div>
           </div>
         ) : (
           <>
-            <label className="file-drop">
-              <input type="file" accept="image/*" onChange={handleFileChange} hidden />
-              {preview ? (
-                <img src={preview} alt="Previsualización" className="file-drop-preview" />
-              ) : (
-                <span>Toca para elegir o hacer una foto</span>
-              )}
+            <label className="file-drop file-drop-compact">
+              <input type="file" accept="image/*" multiple onChange={handleFileChange} hidden />
+              <span>Toca para elegir una o varias fotos</span>
             </label>
 
-            {errorMessage && <p className="form-error">{errorMessage}</p>}
+            {items.length > 0 && (
+              <div className="photo-picker-grid">
+                {items.map((item) => (
+                  <div key={item.id} className="photo-picker-item">
+                    <img src={item.previewUrl} alt="" />
+                    {item.status === 'pending' && !uploading && (
+                      <button
+                        type="button"
+                        className="photo-picker-remove"
+                        onClick={() => removeItem(item.id)}
+                        aria-label="Quitar"
+                      >
+                        ×
+                      </button>
+                    )}
+                    {item.status === 'uploading' && <span className="photo-picker-badge">Subiendo…</span>}
+                    {item.status === 'done' && <span className="photo-picker-badge photo-picker-badge-ok">✓</span>}
+                    {item.status === 'error' && (
+                      <span className="photo-picker-badge photo-picker-badge-error" title={item.error}>
+                        !
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {done && errorCount > 0 && (
+              <p className="form-error">
+                {successCount} subida{successCount === 1 ? '' : 's'} bien, {errorCount} fallaron. Puedes reintentar
+                solo con "Subir fotos".
+              </p>
+            )}
 
             <button
               type="button"
               className="btn btn-primary upload-submit"
-              onClick={handleUpload}
-              disabled={!file || status === 'uploading'}
+              onClick={handleUploadAll}
+              disabled={items.length === 0 || uploading || allDone}
             >
-              {status === 'uploading' ? 'Subiendo…' : 'Subir foto'}
+              {uploading
+                ? 'Subiendo…'
+                : `Subir ${items.length > 1 ? `${items.length} fotos` : 'foto'}`}
             </button>
           </>
         )}
