@@ -318,6 +318,15 @@ body {
   padding: 4px;
 }
 
+.media-picker-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--color-accent);
+  transition: width 0.15s ease;
+}
+
 .media-picker-badge-ok {
   background: rgba(61, 128, 74, 0.6);
   font-size: 18px;

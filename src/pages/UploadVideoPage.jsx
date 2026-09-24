@@ -41,9 +41,13 @@ export default function UploadVideoPage() {
 
     for (const item of items) {
       if (item.status === 'done') continue
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'uploading', error: '' } : i)))
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, status: 'uploading', progress: 0, error: '' } : i))
+      )
       try {
-        await uploadMedia(item.file, guestName)
+        await uploadMedia(item.file, guestName, (progress) => {
+          setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, progress } : i)))
+        })
         setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'done' } : i)))
       } catch (err) {
         console.error(err)
@@ -109,7 +113,12 @@ export default function UploadVideoPage() {
                         ×
                       </button>
                     )}
-                    {item.status === 'uploading' && <span className="media-picker-badge">Subiendo…</span>}
+                    {item.status === 'uploading' && (
+                      <span className="media-picker-badge">
+                        Subiendo… {item.progress ?? 0}%
+                        <span className="media-picker-progress" style={{ width: `${item.progress ?? 0}%` }} />
+                      </span>
+                    )}
                     {item.status === 'done' && <span className="media-picker-badge media-picker-badge-ok">✓</span>}
                     {item.status === 'error' && (
                       <span className="media-picker-badge media-picker-badge-error" title={item.error}>
