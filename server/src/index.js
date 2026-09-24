@@ -28,6 +28,13 @@ app.get('*', (req, res, next) => {
   })
 })
 
+app.use((err, req, res, next) => {
+  if (!err) return next()
+  console.error(err)
+  const message = err.code === 'LIMIT_FILE_SIZE' ? 'El archivo es demasiado grande.' : err.message || 'Error al procesar la petición.'
+  res.status(400).json({ error: message })
+})
+
 const port = process.env.PORT || 8080
 app.listen(port, () => {
   console.log(`Servidor de la galería escuchando en http://localhost:${port}`)

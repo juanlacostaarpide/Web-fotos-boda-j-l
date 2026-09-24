@@ -28,8 +28,8 @@ un fichero JSON; todo corre en un único contenedor Docker.
 │                                                                              │
 │   Al subir:                                                                │
 │   - Foto  → sharp genera una miniatura comprimida (800px, JPEG)            │
-│   - Vídeo → ffprobe valida duración (≤60s) y tamaño (≤100MB);              │
-│             ffmpeg extrae un frame como miniatura                          │
+│   - Vídeo → ffmpeg extrae un frame como miniatura (sin límite de           │
+│             duración/tamaño; solo un tope técnico de 5GB por archivo)      │
 │                                                                              │
 │   data/ (carpeta persistente, montada como volumen)                        │
 │   ├── media.json              ← metadata (quién subió qué, cuándo...)      │

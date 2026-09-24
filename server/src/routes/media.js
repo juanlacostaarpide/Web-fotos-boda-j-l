@@ -17,9 +17,11 @@ const THUMBS_DIR = path.join(UPLOADS_DIR, 'thumbnails')
 fs.mkdirSync(ORIGINALS_DIR, { recursive: true })
 fs.mkdirSync(THUMBS_DIR, { recursive: true })
 
-const MAX_VIDEO_BYTES = 100 * 1024 * 1024
-const MAX_VIDEO_SECONDS = 60
-const MAX_IMAGE_BYTES = 25 * 1024 * 1024
+// Sin límite de duración/tamaño para los invitados: es nuestro propio disco,
+// no una cuota de un servicio en la nube. Este único tope es solo una red de
+// seguridad técnica (evitar una subida rota o descontrolada), no una
+// restricción pensada para el uso normal.
+const MAX_FILE_BYTES = 5 * 1024 * 1024 * 1024 // 5GB
 
 const storage = multer.diskStorage({
   destination: ORIGINALS_DIR,
@@ -33,7 +35,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: MAX_VIDEO_BYTES },
+  limits: { fileSize: MAX_FILE_BYTES },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
       return cb(new Error('Tipo de archivo no permitido'))
@@ -62,14 +64,9 @@ router.post('/', uploadLimiter, upload.single('file'), async (req, res) => {
 
   try {
     if (isVideo) {
-      if (file.size > MAX_VIDEO_BYTES) throw new Error('El vídeo pesa más de 100MB')
       const duration = await getVideoDuration(file.path)
-      if (duration > MAX_VIDEO_SECONDS) {
-        throw new Error(`El vídeo dura ${Math.round(duration)}s (máx. 60s)`)
-      }
       await extractVideoThumbnail(file.path, path.join(THUMBS_DIR, thumbFilename), Math.min(1, duration / 2))
     } else {
-      if (file.size > MAX_IMAGE_BYTES) throw new Error('La imagen pesa demasiado')
       await sharp(file.path)
         .rotate()
         .resize({ width: 800, withoutEnlargement: true })
