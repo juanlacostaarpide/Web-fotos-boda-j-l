@@ -41,7 +41,9 @@ export default function UploadPhotoPage() {
             console.error(err)
             setItems((prev) =>
               prev.map((i) =>
-                i.id === item.id ? { ...i, status: 'error', error: 'No se pudo convertir esta foto (formato no compatible)' } : i
+                i.id === item.id
+                  ? { ...i, status: 'error', error: `No se pudo convertir esta foto: ${err.message || 'formato no compatible'}` }
+                  : i
               )
             )
           })
