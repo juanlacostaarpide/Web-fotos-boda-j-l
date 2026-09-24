@@ -1,7 +1,8 @@
 // Datos de la boda mostrados en la pantalla de bienvenida.
-// Edita estos valores con vuestros nombres y la fecha real.
+// Tomados de https://juanlacostaarpide.github.io/Web-Boda-J-L/
 export const WEDDING_CONFIG = {
-  coupleNames: 'Juan & L.',
-  weddingDate: '2026-06-20',
-  welcomeMessage: 'Gracias por acompañarnos. Comparte con nosotros tus fotos y vídeos del día.',
+  coupleNames: 'Juan & Lucía',
+  weddingDate: '2027-08-15',
+  welcomeMessage:
+    'Gracias por acompañarnos en Robledo de Chavela. Comparte con nosotros tus fotos y vídeos del día.',
 }

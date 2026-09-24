@@ -8,12 +8,16 @@ const formattedDate = new Date(WEDDING_CONFIG.weddingDate).toLocaleDateString('e
   year: 'numeric',
 })
 
+const [nameBefore, nameAfter] = WEDDING_CONFIG.coupleNames.split('&').map((part) => part.trim())
+
 export default function WelcomePage() {
   return (
     <main className="welcome-screen">
       <div className="welcome-card">
         <p className="welcome-eyebrow">Bienvenido/a a nuestra boda</p>
-        <h1 className="welcome-names">{WEDDING_CONFIG.coupleNames}</h1>
+        <h1 className="welcome-names">
+          {nameBefore} <span className="welcome-amp">&amp;</span> {nameAfter}
+        </h1>
         <p className="welcome-date">{formattedDate}</p>
         <p className="welcome-message">{WEDDING_CONFIG.welcomeMessage}</p>
 

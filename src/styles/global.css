@@ -1,14 +1,16 @@
 :root {
-  --color-bg: #f6f1ea;
-  --color-bg-alt: #fffdfa;
-  --color-ink: #3d3229;
-  --color-ink-soft: #7a6c5d;
-  --color-accent: #b98a6b;
-  --color-accent-dark: #8a6248;
-  --color-line: #e4d9c9;
-  --shadow-soft: 0 20px 45px -25px rgba(61, 50, 41, 0.35);
+  /* Misma paleta y tipografías que juanlacostaarpide.github.io/Web-Boda-J-L */
+  --color-bg: #faf6ef;
+  --color-bg-alt: #fffdf9;
+  --color-ink: #362f28;
+  --color-ink-soft: #6b6156;
+  --color-accent: #a9824f;
+  --color-accent-dark: #8a6a3f;
+  --color-line: #e4d8c2;
+  --shadow-soft: 0 20px 45px -25px rgba(54, 47, 40, 0.35);
   --font-serif: 'Cormorant Garamond', 'Times New Roman', serif;
-  --font-sans: 'Sen', system-ui, -apple-system, sans-serif;
+  --font-script: 'Parisienne', cursive;
+  --font-sans: 'Jost', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -25,6 +27,7 @@ body {
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-weight: 300;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -39,8 +42,8 @@ body {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 15% 10%, rgba(185, 138, 107, 0.14), transparent 55%),
-    radial-gradient(circle at 85% 90%, rgba(185, 138, 107, 0.12), transparent 50%),
+    radial-gradient(circle at 15% 10%, rgba(169, 130, 79, 0.14), transparent 55%),
+    radial-gradient(circle at 85% 90%, rgba(169, 130, 79, 0.12), transparent 50%),
     var(--color-bg);
 }
 
@@ -67,9 +70,16 @@ body {
   margin: 0;
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: 52px;
+  font-size: 48px;
   line-height: 1.05;
   color: var(--color-accent-dark);
+}
+
+.welcome-amp {
+  font-family: var(--font-script);
+  font-weight: 400;
+  color: var(--color-accent);
+  padding: 0 2px;
 }
 
 .welcome-date {
@@ -110,6 +120,8 @@ body {
   font-weight: 600;
   font-size: 15px;
   letter-spacing: 0.01em;
+  text-decoration: none;
+  text-align: center;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
@@ -121,7 +133,7 @@ body {
 .btn-primary {
   background: var(--color-accent-dark);
   color: #fff;
-  box-shadow: 0 12px 24px -12px rgba(138, 98, 72, 0.65);
+  box-shadow: 0 12px 24px -12px rgba(138, 106, 63, 0.65);
 }
 
 .btn-secondary {
