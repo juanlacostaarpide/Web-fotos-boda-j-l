@@ -42,20 +42,21 @@ body {
   justify-content: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 15% 10%, rgba(169, 130, 79, 0.14), transparent 55%),
-    radial-gradient(circle at 85% 90%, rgba(169, 130, 79, 0.12), transparent 50%),
-    var(--color-bg);
+    linear-gradient(180deg, rgba(54, 47, 40, 0.5) 0%, rgba(54, 47, 40, 0.35) 45%, rgba(54, 47, 40, 0.72) 100%),
+    url('/images/welcome-bg.jpg') center 25% / cover no-repeat;
 }
 
 .welcome-card {
   width: 100%;
   max-width: 420px;
-  background: var(--color-bg-alt);
-  border: 1px solid var(--color-line);
+  background: rgba(255, 253, 249, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 24px;
   padding: 48px 32px 36px;
   text-align: center;
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 30px 60px -20px rgba(20, 16, 12, 0.55);
 }
 
 .welcome-eyebrow {
