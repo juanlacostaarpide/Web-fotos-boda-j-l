@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGuestName } from '../hooks/useGuestName'
 import { uploadMedia } from '../utils/api'
+import { convertHeicToJpeg, isHeic } from '../utils/heic'
 
 let nextId = 0
 
@@ -18,19 +19,39 @@ export default function UploadPhotoPage() {
     const newItems = files.map((file) => ({
       id: nextId++,
       file,
-      previewUrl: URL.createObjectURL(file),
-      status: 'pending', // pending | uploading | done | error
+      previewUrl: isHeic(file) ? null : URL.createObjectURL(file),
+      status: isHeic(file) ? 'converting' : 'pending', // converting | pending | uploading | done | error
       error: '',
     }))
     setItems((prev) => [...prev, ...newItems])
     setDone(false)
-    e.target.value = '' // permite volver a elegir (incluso los mismos archivos)
+    e.target.value = '' // permite volver a elegir, incluso los mismos archivos
+
+    newItems
+      .filter((item) => item.status === 'converting')
+      .forEach((item) => {
+        convertHeicToJpeg(item.file)
+          .then((converted) => {
+            const previewUrl = URL.createObjectURL(converted)
+            setItems((prev) =>
+              prev.map((i) => (i.id === item.id ? { ...i, file: converted, previewUrl, status: 'pending' } : i))
+            )
+          })
+          .catch((err) => {
+            console.error(err)
+            setItems((prev) =>
+              prev.map((i) =>
+                i.id === item.id ? { ...i, status: 'error', error: 'No se pudo convertir esta foto (formato no compatible)' } : i
+              )
+            )
+          })
+      })
   }
 
   const removeItem = (id) => {
     setItems((prev) => {
       const target = prev.find((item) => item.id === id)
-      if (target) URL.revokeObjectURL(target.previewUrl)
+      if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
       return prev.filter((item) => item.id !== id)
     })
   }
@@ -40,7 +61,7 @@ export default function UploadPhotoPage() {
     setDone(false)
 
     for (const item of items) {
-      if (item.status === 'done') continue
+      if (item.status === 'done' || item.status === 'converting') continue
       setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, status: 'uploading', error: '' } : i)))
       try {
         await uploadMedia(item.file, guestName)
@@ -60,13 +81,14 @@ export default function UploadPhotoPage() {
   }
 
   const startOver = () => {
-    items.forEach((item) => URL.revokeObjectURL(item.previewUrl))
+    items.forEach((item) => item.previewUrl && URL.revokeObjectURL(item.previewUrl))
     setItems([])
     setDone(false)
   }
 
   const successCount = items.filter((item) => item.status === 'done').length
   const errorCount = items.filter((item) => item.status === 'error').length
+  const anyConverting = items.some((item) => item.status === 'converting')
   const allDone = items.length > 0 && items.every((item) => item.status === 'done')
 
   return (
@@ -92,29 +114,34 @@ export default function UploadPhotoPage() {
         ) : (
           <>
             <label className="file-drop file-drop-compact">
-              <input type="file" accept="image/*" multiple onChange={handleFileChange} hidden />
+              <input type="file" accept="image/*,.heic,.heif" multiple onChange={handleFileChange} hidden />
               <span>Toca para elegir una o varias fotos</span>
             </label>
 
             {items.length > 0 && (
-              <div className="photo-picker-grid">
+              <div className="media-picker-grid">
                 {items.map((item) => (
-                  <div key={item.id} className="photo-picker-item">
-                    <img src={item.previewUrl} alt="" />
+                  <div key={item.id} className="media-picker-item">
+                    {item.previewUrl ? (
+                      <img src={item.previewUrl} alt="" />
+                    ) : (
+                      <div className="media-picker-placeholder" />
+                    )}
                     {item.status === 'pending' && !uploading && (
                       <button
                         type="button"
-                        className="photo-picker-remove"
+                        className="media-picker-remove"
                         onClick={() => removeItem(item.id)}
                         aria-label="Quitar"
                       >
                         ×
                       </button>
                     )}
-                    {item.status === 'uploading' && <span className="photo-picker-badge">Subiendo…</span>}
-                    {item.status === 'done' && <span className="photo-picker-badge photo-picker-badge-ok">✓</span>}
+                    {item.status === 'converting' && <span className="media-picker-badge">Procesando…</span>}
+                    {item.status === 'uploading' && <span className="media-picker-badge">Subiendo…</span>}
+                    {item.status === 'done' && <span className="media-picker-badge media-picker-badge-ok">✓</span>}
                     {item.status === 'error' && (
-                      <span className="photo-picker-badge photo-picker-badge-error" title={item.error}>
+                      <span className="media-picker-badge media-picker-badge-error" title={item.error}>
                         !
                       </span>
                     )}
@@ -134,11 +161,13 @@ export default function UploadPhotoPage() {
               type="button"
               className="btn btn-primary upload-submit"
               onClick={handleUploadAll}
-              disabled={items.length === 0 || uploading || allDone}
+              disabled={items.length === 0 || uploading || allDone || anyConverting}
             >
               {uploading
                 ? 'Subiendo…'
-                : `Subir ${items.length > 1 ? `${items.length} fotos` : 'foto'}`}
+                : anyConverting
+                  ? 'Procesando fotos…'
+                  : `Subir ${items.length > 1 ? `${items.length} fotos` : 'foto'}`}
             </button>
           </>
         )}
