@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// Storage del proyecto "FOTOS".
+// Estructura de carpetas:
+//   /originals/{uid}/{fileName}   → foto original en alta calidad (NUNCA legible por invitados)
+//   /thumbnails/{uid}/{fileName}  → miniatura comprimida (la que se ve en la galería)
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ⚠️ Pega aquí el UID de tu usuario admin (email/password) del proyecto FOTOS.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.uid == 'REEMPLAZA_CON_TU_UID_PROYECTO_FOTOS';
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function isReasonableImage() {
+      return request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /originals/{uid}/{fileName} {
+      // Solo el admin puede leer (y por tanto descargar) los originales.
+      allow read: if isAdmin();
+      // Un invitado solo puede subir a SU PROPIA carpeta.
+      allow write: if isOwner(uid) && isReasonableImage();
+    }
+
+    match /thumbnails/{uid}/{fileName} {
+      // Las miniaturas las puede ver cualquier invitado autenticado (galería pública).
+      allow read: if request.auth != null;
+      allow write: if isOwner(uid) && isReasonableImage();
+    }
+
+    // Cualquier otra ruta, denegada por defecto.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
