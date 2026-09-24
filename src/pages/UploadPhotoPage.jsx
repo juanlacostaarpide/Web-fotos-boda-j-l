@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { createImageThumbnail } from '../utils/imageThumbnail'
-import { uploadPhoto } from '../utils/mediaUpload'
+import { useGuestName } from '../hooks/useGuestName'
+import { uploadMedia } from '../utils/api'
 
 export default function UploadPhotoPage() {
-  const { photosUid, guestName, authReady } = useAuth()
+  const { guestName } = useGuestName()
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [status, setStatus] = useState('idle') // idle | uploading | done | error
@@ -25,18 +24,17 @@ export default function UploadPhotoPage() {
   }
 
   const handleUpload = async () => {
-    if (!file || !photosUid) return
+    if (!file) return
     setStatus('uploading')
     setErrorMessage('')
     try {
-      const thumbnailBlob = await createImageThumbnail(file)
-      await uploadPhoto({ file, thumbnailBlob, photosUid, uploaderName: guestName })
+      await uploadMedia(file, guestName)
       setStatus('done')
       setFile(null)
       setPreview(null)
     } catch (err) {
       console.error(err)
-      setErrorMessage('No se pudo subir la foto. Inténtalo de nuevo.')
+      setErrorMessage(err.message || 'No se pudo subir la foto. Inténtalo de nuevo.')
       setStatus('error')
     }
   }
@@ -78,7 +76,7 @@ export default function UploadPhotoPage() {
               type="button"
               className="btn btn-primary upload-submit"
               onClick={handleUpload}
-              disabled={!file || !authReady || status === 'uploading'}
+              disabled={!file || status === 'uploading'}
             >
               {status === 'uploading' ? 'Subiendo…' : 'Subir foto'}
             </button>

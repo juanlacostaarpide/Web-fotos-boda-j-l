@@ -1,7 +1,0 @@
-{
-  "projects": {
-    "default": "photos",
-    "photos": "REEMPLAZA_CON_TU_PROJECT_ID_FOTOS",
-    "videos": "REEMPLAZA_CON_TU_PROJECT_ID_VIDEOS"
-  }
-}

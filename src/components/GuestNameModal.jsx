@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
+import { useGuestName } from '../hooks/useGuestName'
 
 const SEEN_KEY = 'boda-jl-name-prompt-seen'
 
 export default function GuestNameModal() {
-  const { guestName, setGuestName } = useAuth()
+  const { guestName, setGuestName } = useGuestName()
   const [dismissed, setDismissed] = useState(() => sessionStorage.getItem(SEEN_KEY) === '1')
   const [value, setValue] = useState('')
 

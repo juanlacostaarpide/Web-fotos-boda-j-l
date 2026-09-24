@@ -1,17 +1,16 @@
 node_modules
+server/node_modules
 dist
 dist-ssr
+server/public
 *.local
 
 .env
 .env.*
 !.env.example
 
-.firebase
-.firebaserc.local
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
+# Datos locales de Docker (fotos/vídeos subidos + base de datos JSON)
+data/
 
 .DS_Store
 *.log

@@ -490,6 +490,23 @@ body {
   font-size: 11px;
 }
 
+.media-modal-download {
+  color: var(--color-accent-dark);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.media-modal-delete {
+  appearance: none;
+  border: none;
+  background: none;
+  color: #a4453a;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
 /* ── Panel de admin ──────────────────────────────────────────────────── */
 
 .admin-controls {

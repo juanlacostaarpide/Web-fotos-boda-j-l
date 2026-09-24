@@ -1,10 +1,10 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAdmin } from '../context/AdminContext'
 
 export default function RequireAdmin({ children }) {
-  const { isAdmin, authReady } = useAuth()
+  const { isAdmin, ready } = useAdmin()
 
-  if (!authReady) return <p className="loading-message">Cargando…</p>
+  if (!ready) return <p className="loading-message">Cargando…</p>
   if (!isAdmin) return <Navigate to="/admin/login" replace />
 
   return children

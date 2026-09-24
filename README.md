@@ -1,248 +1,166 @@
 # 📷 Galería de fotos y vídeos — Boda Juan & L.
 
 Web para que los invitados suban fotos y vídeos de la boda y los vean en una galería
-compartida, **sin poder descargar los originales**. Solo el admin (los novios) puede
-descargar todo el contenido.
+compartida. Cualquiera puede ver y descargar un archivo individual desde la galería;
+solo el admin (los novios) puede descargar **todo** de golpe en un ZIP, y solo el admin
+puede borrar archivos.
 
-Inspirada en [dayafteralbum.com](https://dayafteralbum.com), pero 100% gratuita: sin
-backend propio, sin Cloud Functions, corriendo íntegramente en el plan **Spark** (gratis)
-de Firebase, repartido en **dos proyectos Firebase** para duplicar la cuota gratuita de
-Storage (2 × 5 GB = 10 GB).
+**Arquitectura: 100% autoalojada (self-hosted), sin servicios de terceros ni tarjeta de
+crédito.** Un backend propio (Node/Express) guarda los archivos en disco y la metadata en
+un fichero JSON; todo corre en un único contenedor Docker.
 
 ## Estado actual del proyecto
 
-Este commit contiene la **estructura base**: scaffold de React + Vite, configuración de
-los dos proyectos Firebase, reglas de seguridad de Firestore/Storage y el pipeline de
-despliegue en GitHub Actions. Las siguientes piezas se irán añadiendo paso a paso:
+- [x] Backend propio (Express + Docker): subida, thumbnails, login admin, ZIP, borrado
+- [x] Frontend (React + Vite): bienvenida, subir foto/vídeo, galería, panel admin, QR
+- [ ] Desplegar en un servidor real (previsto para más adelante — ver "Despliegue")
 
-- [x] Estructura del proyecto, README y configuración de despliegue
-- [ ] Login anónimo de invitados + login email/password del admin
-- [ ] Subida de fotos (con generación de thumbnail en `<canvas>`)
-- [ ] Subida de vídeos (con validación de duración/tamaño y frame estático)
-- [ ] Galería pública (grid de miniaturas, ampliar sin descargar)
-- [ ] Panel de admin ("Descargar todo" en ZIP con JSZip)
-- [ ] Reglas de seguridad afinadas y probadas
-
-## Arquitectura
+## Cómo funciona
 
 ```
-┌─────────────────────────────┐        ┌──────────────────────────────┐
-│  Proyecto Firebase "FOTOS"   │        │  Proyecto Firebase "VÍDEOS"   │
-│  ─────────────────────────   │        │  ──────────────────────────  │
-│  • Auth (anónimo + email/pw) │        │  • Auth (anónimo + email/pw) │
-│  • Firestore (metadata de    │        │  • Storage (5 GB gratis)     │
-│    TODAS las fotos y vídeos) │        │    /originals/{uid}/...      │
-│  • Storage (5 GB gratis)     │        │    /thumbnails/{uid}/...     │
-│    /originals/{uid}/...      │        └──────────────────────────────┘
-│    /thumbnails/{uid}/...     │
-│  • Firebase Hosting (la web) │
-└─────────────────────────────┘
+┌───────────────────────────── Contenedor Docker ─────────────────────────────┐
+│                                                                              │
+│   Express (Node)                                                           │
+│   ├── sirve el frontend (React ya compilado)                              │
+│   ├── /api/media        → listar / subir / borrar fotos y vídeos          │
+│   ├── /api/admin/*       → login admin, "descargar todo" en ZIP           │
+│   └── /uploads/*         → sirve los archivos (originales y miniaturas)   │
+│                                                                              │
+│   Al subir:                                                                │
+│   - Foto  → sharp genera una miniatura comprimida (800px, JPEG)            │
+│   - Vídeo → ffprobe valida duración (≤60s) y tamaño (≤100MB);              │
+│             ffmpeg extrae un frame como miniatura                          │
+│                                                                              │
+│   data/ (carpeta persistente, montada como volumen)                        │
+│   ├── media.json              ← metadata (quién subió qué, cuándo...)      │
+│   └── uploads/originals|thumbnails/                                        │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Firestore vive solo en el proyecto de fotos y guarda un documento por cada archivo
-subido (sea foto o vídeo), con la ruta al original y al thumbnail correspondientes,
-estén en el bucket que estén. La web (`firebase.json` de Hosting) también se despliega
-desde el proyecto de fotos.
-
-Cada invitado, al entrar, se autentica de forma anónima **en los dos proyectos a la
-vez** (dos UIDs distintos, uno por proyecto), lo que le permite subir a ambos Storage
-respetando las reglas de seguridad de cada uno.
+No hay Firebase, no hay Cloudinary, no hay cuenta de ningún proveedor externo. Es tu
+propio servidor.
 
 ## Requisitos
 
-- Node.js 20+
-- Una cuenta de Google (para crear los proyectos Firebase)
-- [Firebase CLI](https://firebase.google.com/docs/cli): `npm install -g firebase-tools`
-- Un repositorio en GitHub (para el deploy automático con Actions)
+- [Docker](https://docs.docker.com/get-docker/) y Docker Compose (v2, ya viene con
+  Docker Desktop / Docker Engine moderno)
+- Node.js 20+ (opcional, solo si quieres desarrollar el frontend con recarga en caliente
+  fuera de Docker)
 
-## 1. Crear los dos proyectos en Firebase Console
+## 1. Configurar las variables de entorno
 
-1. Ve a [console.firebase.google.com](https://console.firebase.google.com) → **Añadir
-   proyecto**.
-2. Crea el primer proyecto, por ejemplo `boda-jl-fotos`. Puedes desactivar Google
-   Analytics (no hace falta).
-3. Repite el proceso para crear un segundo proyecto, por ejemplo `boda-jl-videos`.
-
-> No necesitas tarjeta de crédito: todo el proyecto funciona en el plan gratuito
-> **Spark**, y no usamos Cloud Functions (que requerirían el plan Blaze).
-
-## 2. Activar Auth, Firestore y Storage en cada proyecto
-
-**En el proyecto de FOTOS** (`boda-jl-fotos`):
-
-1. **Authentication** → pestaña "Sign-in method" → activa:
-   - **Anónimo**
-   - **Correo electrónico/contraseña**
-2. **Firestore Database** → "Crear base de datos" → modo producción → elige la región
-   más cercana (p. ej. `eur3`).
-3. **Storage** → "Comenzar" → modo producción → misma región.
-
-**En el proyecto de VÍDEOS** (`boda-jl-videos`):
-
-1. **Authentication** → activa igualmente **Anónimo** y **Correo/contraseña**.
-2. **Storage** → "Comenzar" → modo producción.
-3. Este proyecto **no necesita Firestore** (toda la metadata vive en el proyecto de
-   fotos).
-
-## 3. Registrar una app web en cada proyecto y copiar las credenciales
-
-En cada proyecto: ⚙️ **Configuración del proyecto** → sección "Tus apps" → icono
-`</>` (Web) → dale un nombre (p. ej. "Galería boda") → **no** marques Hosting aquí
-(lo configuramos por CLI) → copia el objeto `firebaseConfig`.
-
-Copia `.env.example` como `.env` en la raíz del proyecto:
+Copia `.env.example` como `.env`:
 
 ```bash
 cp .env.example .env
 ```
 
-Y rellena cada variable con el `firebaseConfig` correspondiente:
-
-```
-VITE_FIREBASE_PHOTOS_API_KEY=...
-VITE_FIREBASE_PHOTOS_AUTH_DOMAIN=...
-VITE_FIREBASE_PHOTOS_PROJECT_ID=...
-VITE_FIREBASE_PHOTOS_STORAGE_BUCKET=...
-VITE_FIREBASE_PHOTOS_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_PHOTOS_APP_ID=...
-
-VITE_FIREBASE_VIDEOS_API_KEY=...
-...
-```
-
-Estas claves son públicas por diseño (viajan en el bundle del cliente); la seguridad
-real la dan las **Security Rules** de Firestore/Storage, configuradas en el siguiente
-paso.
-
-## 4. Crear tu cuenta de admin (email/contraseña)
-
-En **cada uno de los dos proyectos**: Authentication → Users → "Añadir usuario" →
-introduce tu email y una contraseña. Vas a tener que hacerlo dos veces (una vez por
-proyecto), ya que cada proyecto Firebase tiene su propio sistema de Auth y por tanto un
-**UID distinto** para la misma persona en cada uno.
-
-## 5. Configurar tu UID de admin en las reglas de seguridad
-
-Tras crear tu usuario admin en el paso anterior, copia su **UID** (columna "User UID" en
-la lista de usuarios de Authentication) y pégalo en estos 4 sitios:
-
-| Archivo | Qué reemplazar |
-|---|---|
-| `firestore.rules` | `REEMPLAZA_CON_TU_UID_PROYECTO_FOTOS` → tu UID admin del proyecto **FOTOS** |
-| `storage.photos.rules` | `REEMPLAZA_CON_TU_UID_PROYECTO_FOTOS` → tu UID admin del proyecto **FOTOS** |
-| `storage.videos.rules` | `REEMPLAZA_CON_TU_UID_PROYECTO_VIDEOS` → tu UID admin del proyecto **VÍDEOS** |
-| `src/firebase/adminConfig.js` | `ADMIN_UID_PHOTOS` y `ADMIN_UID_VIDEOS` (los usa el frontend para mostrar el panel de admin) |
-
-También actualiza `.firebaserc` con los **Project ID** reales (no el nombre bonito, el
-ID técnico que ves en Configuración del proyecto) de tus dos proyectos:
-
-```json
-{
-  "projects": {
-    "default": "photos",
-    "photos": "boda-jl-fotos",
-    "videos": "boda-jl-videos"
-  }
-}
-```
-
-## 6. Instalar dependencias y probar en local
+Genera una contraseña de admin (hash bcrypt — nunca se guarda en texto plano):
 
 ```bash
+node server/src/hashPassword.js "tu-contraseña-secreta"
+```
+
+Copia el resultado en `ADMIN_PASSWORD_HASH` dentro de `.env`.
+
+**⚠️ Importante**: el hash contiene signos `$` (p.ej. `$2a$10$...`). Docker Compose lee
+`$` como inicio de variable en los ficheros `.env`, así que tienes que **escapar cada
+`$` duplicándolo por `$$`** al pegarlo. Ejemplo:
+
+```
+# lo que te da hashPassword.js:
+$2a$10$abc123.../XYZ
+
+# lo que pegas en .env:
+ADMIN_PASSWORD_HASH=$$2a$$10$$abc123.../XYZ
+```
+
+Genera también una cadena aleatoria para firmar la sesión:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+y pégala en `SESSION_SECRET` (esta no lleva `$`, no hace falta escapar nada).
+
+Pon tu email de admin en `ADMIN_EMAIL`.
+
+## 2. Levantar todo con Docker
+
+```bash
+docker compose up --build
+```
+
+Abre `http://localhost:8080`. Los archivos y la base de datos se guardan en `./data/`
+(en tu disco, fuera del contenedor), así que sobreviven a reinicios y reconstrucciones.
+
+Para pararlo: `Ctrl+C`, o `docker compose down` en otra terminal.
+
+## 3. Desarrollo con recarga en caliente (opcional)
+
+Si vas a tocar el frontend y quieres ver los cambios al instante sin reconstruir la
+imagen:
+
+```bash
+# Terminal 1: solo el backend
+docker compose up --build
+
+# Terminal 2: el frontend con Vite, que hace proxy de /api y /uploads al backend
 npm install
 npm run dev
 ```
 
-Abre `http://localhost:5173`.
+Abre `http://localhost:5173` (Vite). Los cambios en `src/` se recargan al instante; los
+cambios en `server/` requieren volver a `docker compose up --build`.
 
-## 7. Desplegar las reglas y el Hosting manualmente (primera vez)
+## Cómo probar el flujo completo
 
-```bash
-firebase login
-firebase deploy --only firestore,storage --project photos
-firebase deploy --config firebase.videos.json --only storage --project videos
-
-npm run build
-firebase deploy --only hosting --project photos
-```
-
-## 8. Configurar el repo de GitHub con GitHub Actions
-
-El workflow `.github/workflows/deploy.yml` compila y despliega a Firebase Hosting en
-cada push a `main`. Necesita estos **Secrets** del repositorio (Settings → Secrets and
-variables → Actions → New repository secret):
-
-**Credenciales del `.env` (una por variable, mismos nombres):**
-
-```
-VITE_FIREBASE_PHOTOS_API_KEY
-VITE_FIREBASE_PHOTOS_AUTH_DOMAIN
-VITE_FIREBASE_PHOTOS_PROJECT_ID
-VITE_FIREBASE_PHOTOS_STORAGE_BUCKET
-VITE_FIREBASE_PHOTOS_MESSAGING_SENDER_ID
-VITE_FIREBASE_PHOTOS_APP_ID
-VITE_FIREBASE_VIDEOS_API_KEY
-VITE_FIREBASE_VIDEOS_AUTH_DOMAIN
-VITE_FIREBASE_VIDEOS_PROJECT_ID
-VITE_FIREBASE_VIDEOS_STORAGE_BUCKET
-VITE_FIREBASE_VIDEOS_MESSAGING_SENDER_ID
-VITE_FIREBASE_VIDEOS_APP_ID
-```
-
-**Secrets propios del deploy:**
-
-- `FIREBASE_PROJECT_ID_PHOTOS`: el Project ID de tu proyecto de fotos (p. ej.
-  `boda-jl-fotos`).
-- `FIREBASE_SERVICE_ACCOUNT_PHOTOS`: JSON de una cuenta de servicio con permiso de
-  Firebase Hosting. Puedes generarlo automáticamente ejecutando en tu máquina:
-
-  ```bash
-  firebase init hosting:github
-  ```
-
-  (elige el proyecto de fotos; el asistente crea el secret y el workflow por ti — si
-  ya tienes `.github/workflows/deploy.yml` como en este repo, puedes decir que no lo
-  sobrescriba y copiar tú mismo el secret generado).
-
-Tras configurar los secrets, cualquier `git push` a `main` desplegará la web
-automáticamente.
+1. Abre `http://localhost:8080` → "Subir foto" o "Subir vídeo" → elige un archivo de tu
+   ordenador/móvil.
+2. Ve a "Ver la galería" → deberías ver la miniatura. Haz click para ampliarla; hay un
+   botón "Descargar".
+3. Ve a "Acceso admin" → entra con el email y la contraseña (sin escapar, la de verdad)
+   que configuraste en `.env`.
+4. En el panel de admin: filtra por tipo/fecha y prueba "Descargar todo" (te da un ZIP
+   con todos los originales).
 
 ## Estructura del proyecto
 
 ```
-├── src/
-│   ├── firebase/
-│   │   ├── photosApp.js     # App Firebase del proyecto FOTOS (Auth, Firestore, Storage)
-│   │   ├── videosApp.js     # App Firebase del proyecto VÍDEOS (Auth, Storage)
-│   │   └── adminConfig.js   # UIDs de admin (placeholders a reemplazar)
-│   ├── pages/                # Pantallas (bienvenida, subida, galería, admin) — próximos pasos
-│   ├── components/           # Componentes reutilizables — próximos pasos
-│   ├── hooks/                # Hooks (auth, subida, galería) — próximos pasos
-│   ├── utils/                # Compresión de imágenes, validación de vídeo, ZIP — próximos pasos
-│   ├── styles/global.css     # Estética de la web (serif elegante + paleta suave)
-│   ├── weddingConfig.js      # Nombres de la pareja y fecha de la boda
-│   ├── App.jsx                # Pantalla de bienvenida (placeholder)
-│   └── main.jsx
-├── firestore.rules
-├── firestore.indexes.json
-├── storage.photos.rules
-├── storage.videos.rules
-├── firebase.json              # Config del proyecto FOTOS (hosting + firestore + storage)
-├── firebase.videos.json       # Config del proyecto VÍDEOS (solo storage)
-├── .firebaserc
-├── .env.example
-└── .github/workflows/deploy.yml
+├── src/                        # Frontend (React)
+│   ├── pages/                  # Bienvenida, subir foto/vídeo, galería, admin, QR
+│   ├── components/             # Grid de la galería, modal, etc.
+│   ├── context/AdminContext.jsx  # Sesión de admin (login/logout)
+│   ├── hooks/                  # useGuestName, useMediaList
+│   └── utils/api.js            # Llamadas a la API (subir, borrar)
+├── server/                     # Backend (Node/Express)
+│   ├── src/index.js            # Servidor: sirve la API y el frontend compilado
+│   ├── src/routes/media.js     # Subir, listar, borrar (con sharp/ffmpeg)
+│   ├── src/routes/admin.js     # Login admin, "descargar todo" en ZIP
+│   ├── src/auth.js             # Sesión de admin (cookie + JWT)
+│   ├── src/db.js               # "Base de datos" en un fichero JSON
+│   └── src/hashPassword.js     # Genera el hash bcrypt de tu contraseña
+├── data/                       # (no versionado) archivos subidos + metadata
+├── Dockerfile                  # Build multi-etapa: frontend + backend en una imagen
+├── docker-compose.yml
+└── .env.example
 ```
 
-## Próximos pasos
+## Despliegue (más adelante)
 
-Con esta base ya podemos ir construyendo, en orden:
+Todo esto corre igual en tu portátil que en un servidor real — es el mismo
+`docker compose up --build`. Cuando os acerquéis a la fecha de la boda, hay que decidir
+dónde alojarlo (un VPS barato es la opción más fiable para el día del evento, ya que un
+servidor casero depende de tu luz/router/ISP funcionando justo ese día). Cuando lo
+tengáis decidido, hay que:
 
-1. **Auth**: login anónimo automático (en ambos proyectos) + login email/password del
-   admin.
-2. **Subida de fotos**: compresión de thumbnail en `<canvas>`, subida a Storage +
-   Firestore.
-3. **Subida de vídeos**: validación de duración/tamaño, captura de frame, subida.
-4. **Galería**: grid mobile-first con las miniaturas, modal de vista ampliada.
-5. **Panel de admin**: filtros y botón "Descargar todo" (ZIP con JSZip).
-6. **QR / link corto** para compartir en las mesas de la boda.
+1. Elegir el proveedor y crear un servidor pequeño (2GB RAM es más que suficiente).
+2. Instalar Docker en él.
+3. Copiar el repo (o hacer `git clone`) y el `.env` con credenciales de producción.
+4. `docker compose up -d --build` (el `-d` lo deja corriendo en segundo plano).
+5. Poner un dominio/HTTPS delante (necesario para que el móvil permita usar la cámara) —
+   normalmente con Caddy o Nginx + Let's Encrypt.
+6. Configurar backups periódicos de la carpeta `data/` (son las únicas fotos/vídeos que
+   existen — conviene copiarlas a otro sitio de vez en cuando).
+
+Lo vemos con calma cuando llegue el momento.

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { useAdmin } from '../context/AdminContext'
 
 export default function AdminLoginPage() {
-  const { isAdmin, adminSignIn } = useAuth()
+  const { isAdmin, login } = useAdmin()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,11 +17,11 @@ export default function AdminLoginPage() {
     setStatus('loading')
     setErrorMessage('')
     try {
-      await adminSignIn(email, password)
+      await login(email, password)
       navigate('/admin', { replace: true })
     } catch (err) {
       console.error(err)
-      setErrorMessage('Email o contraseña incorrectos.')
+      setErrorMessage(err.message || 'Email o contraseña incorrectos.')
       setStatus('error')
     }
   }

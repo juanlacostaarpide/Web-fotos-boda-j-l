@@ -1,6 +1,8 @@
 export const MAX_VIDEO_DURATION_SECONDS = 60
 export const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024
 
+// Validación rápida en el cliente para dar feedback inmediato antes de subir.
+// El servidor vuelve a comprobar tamaño y duración de forma autoritativa.
 export function validateVideoFile(file) {
   if (!file.type.startsWith('video/')) {
     return 'El archivo seleccionado no es un vídeo.'
@@ -12,9 +14,6 @@ export function validateVideoFile(file) {
   return null
 }
 
-// Carga el vídeo en un <video> oculto para leer su duración y dimensiones
-// sin necesidad de subirlo. Devuelve también el propio elemento <video> y la
-// URL de objeto, para poder capturar después un frame como miniatura.
 export function loadVideoMetadata(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
@@ -24,7 +23,7 @@ export function loadVideoMetadata(file) {
     video.src = url
 
     video.onloadedmetadata = () => {
-      resolve({ duration: video.duration, width: video.videoWidth, height: video.videoHeight, video, url })
+      resolve({ duration: video.duration, url })
     }
     video.onerror = () => {
       URL.revokeObjectURL(url)
@@ -38,29 +37,4 @@ export function validateVideoDuration(duration) {
     return `El vídeo dura ${Math.round(duration)}s y el máximo permitido es 60s.`
   }
   return null
-}
-
-// Captura un frame del vídeo (por defecto al segundo 1, o antes si el vídeo es más corto)
-// y lo convierte en un JPEG comprimido para usarlo como miniatura en la galería.
-export function captureVideoFrame(video, atSeconds = 1) {
-  return new Promise((resolve, reject) => {
-    const target = Math.min(atSeconds, Math.max(video.duration - 0.1, 0))
-
-    const onSeeked = () => {
-      video.removeEventListener('seeked', onSeeked)
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error('No se pudo generar la miniatura del vídeo'))),
-        'image/jpeg',
-        0.75
-      )
-    }
-
-    video.addEventListener('seeked', onSeeked)
-    video.currentTime = target
-  })
 }

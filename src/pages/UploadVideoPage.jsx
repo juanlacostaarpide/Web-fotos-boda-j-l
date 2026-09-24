@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
-import { uploadVideo } from '../utils/mediaUpload'
-import { captureVideoFrame, loadVideoMetadata, validateVideoDuration, validateVideoFile } from '../utils/videoValidation'
+import { useGuestName } from '../hooks/useGuestName'
+import { uploadMedia } from '../utils/api'
+import { loadVideoMetadata, validateVideoDuration, validateVideoFile } from '../utils/videoValidation'
 
 export default function UploadVideoPage() {
-  const { photosUid, videosUid, guestName, authReady } = useAuth()
+  const { guestName } = useGuestName()
   const [file, setFile] = useState(null)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [status, setStatus] = useState('idle') // idle | checking | uploading | done | error
@@ -47,26 +47,17 @@ export default function UploadVideoPage() {
   }
 
   const handleUpload = async () => {
-    if (!file || !previewUrl || !photosUid || !videosUid) return
+    if (!file) return
     setStatus('uploading')
     setErrorMessage('')
     try {
-      const video = document.createElement('video')
-      video.src = previewUrl
-      video.muted = true
-      await new Promise((resolve, reject) => {
-        video.onloadedmetadata = resolve
-        video.onerror = () => reject(new Error('No se pudo preparar el vídeo'))
-      })
-      const thumbnailBlob = await captureVideoFrame(video, 1)
-
-      await uploadVideo({ file, thumbnailBlob, photosUid, videosUid, uploaderName: guestName })
+      await uploadMedia(file, guestName)
       setStatus('done')
       setFile(null)
       setPreviewUrl(null)
     } catch (err) {
       console.error(err)
-      setErrorMessage('No se pudo subir el vídeo. Inténtalo de nuevo.')
+      setErrorMessage(err.message || 'No se pudo subir el vídeo. Inténtalo de nuevo.')
       setStatus('error')
     }
   }
@@ -110,7 +101,7 @@ export default function UploadVideoPage() {
               type="button"
               className="btn btn-primary upload-submit"
               onClick={handleUpload}
-              disabled={!file || !authReady || status === 'uploading' || status === 'checking'}
+              disabled={!file || status === 'uploading' || status === 'checking'}
             >
               {status === 'uploading' ? 'Subiendo…' : 'Subir vídeo'}
             </button>

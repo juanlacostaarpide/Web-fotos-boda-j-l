@@ -2,7 +2,7 @@ import { useState } from 'react'
 import MediaCard from './MediaCard'
 import MediaModal from './MediaModal'
 
-export default function MediaGrid({ items }) {
+export default function MediaGrid({ items, isAdmin, onDelete }) {
   const [selected, setSelected] = useState(null)
 
   if (items.length === 0) {
@@ -16,7 +16,7 @@ export default function MediaGrid({ items }) {
           <MediaCard key={item.id} item={item} onClick={setSelected} />
         ))}
       </div>
-      <MediaModal item={selected} onClose={() => setSelected(null)} />
+      <MediaModal item={selected} onClose={() => setSelected(null)} isAdmin={isAdmin} onDelete={onDelete} />
     </>
   )
 }
