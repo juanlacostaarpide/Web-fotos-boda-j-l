@@ -646,3 +646,16 @@ body {
   color: var(--color-ink-soft);
   word-break: break-all;
 }
+
+.qr-step {
+  margin-bottom: 8px;
+}
+
+.qr-step-label {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-accent-dark);
+}

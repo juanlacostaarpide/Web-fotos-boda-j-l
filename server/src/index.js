@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import mediaRouter from './routes/media.js'
 import adminRouter from './routes/admin.js'
+import configRouter from './routes/config.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -15,6 +16,7 @@ app.use(cookieParser())
 app.use('/uploads', express.static(path.join(process.cwd(), 'data', 'uploads')))
 app.use('/api/media', mediaRouter)
 app.use('/api/admin', adminRouter)
+app.use('/api/config', configRouter)
 
 // En producción (dentro de Docker) servimos aquí el build de React.
 // En desarrollo, el frontend corre aparte con `npm run dev` (Vite) y hace
