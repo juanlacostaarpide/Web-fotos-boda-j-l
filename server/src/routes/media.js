@@ -48,8 +48,23 @@ const upload = multer({
 const uploadLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 60 })
 
 router.get('/', (req, res) => {
-  const items = readAll().sort((a, b) => b.createdAt - a.createdAt)
-  res.json(items)
+  const items = readAll()
+  const missing = []
+  const alive = items.filter((item) => {
+    const originalExists = fs.existsSync(path.join(UPLOADS_DIR, item.originalPath))
+    const thumbExists = fs.existsSync(path.join(UPLOADS_DIR, item.thumbPath))
+    if (!originalExists || !thumbExists) {
+      missing.push(item.id)
+      return false
+    }
+    return true
+  })
+
+  // Si alguien ha borrado archivos directamente del disco (fuera de la app),
+  // limpiamos también su metadata para que no vuelva a aparecer.
+  missing.forEach((id) => remove(id))
+
+  res.json(alive.sort((a, b) => b.createdAt - a.createdAt))
 })
 
 router.post('/', uploadLimiter, upload.single('file'), async (req, res) => {
